@@ -445,6 +445,33 @@ rmarkdown::render("reports/social_media_engagement_report.Rmd")  # -> HTML repor
 The report re-executes the same scripts via `knitr::read_chunk()`, so the scripts and the report
 can never drift apart.
 
+# 11. Compliance with the problem statement
+
+Every element of the brief is addressed in this report, as mapped below.
+
+| Problem-statement requirement | Where it is delivered |
+|---|---|
+| Dataset with post date/time, content type, views/impressions, likes, comments, shares, followers and other engagement variables | §2; `data/raw/social_media_engagement.csv` (`Timestamp`, `Content_Type`, `Views`, `Likes`, `Comments`, `Shares`, `Saves`, `Follower_Count`, `Engagement_Rate`, `Hashtag_Count`, `Content_Length`, `Sentiment`, `Influencer_Tier`, …) |
+| Clean the data | §4; `R/01_preprocess.R`; cleaned output `data/processed/engagement_clean.csv` |
+| Investigate engagement by content type, posting period and other attributes | §5.4, §5.6, §6; figs 3, 6, 8 |
+| ggplot2 **trend** plots | fig 1 (§5.2) |
+| ggplot2 **distributions** | fig 2 (§5.3) |
+| ggplot2 **comparisons** | figs 3, 4, 8 (§5.4) |
+| ggplot2 **scatter** plots | fig 5 (§5.5) |
+| ggplot2 **facets** | fig 6 (§5.6) |
+| ggplot2 **correlation heat maps** | fig 7 (§5.6), fig 14 (§7) |
+| Relationships among views, likes, comments and shares | §5.1, §5.5 (correlation table, fig 5, fig 7) |
+| Regression on an engagement measure | §6 (Model A = engagement volume; Model B = engagement efficiency), with diagnostics, interaction test, cross-validation and sensitivity |
+| Report uses **labels, annotations, scales, zooming, themes** | throughout — e.g. `annotate()` in figs 1, 2, 5; `coord_cartesian()` zooming in figs 3, 8; log scales in figs 2, 5, 13; consistent `theme_social()` |
+| Deliverable: dataset description and source | §2; `data/raw/SOURCES.md` |
+| Deliverable: R script / notebook | `R/00_setup.R`, `01_preprocess.R`, `02_eda.R`, `03_modeling.R`, `04_replication.R`, `00_run_all.R` |
+| Deliverable: cleaned dataset / reproducible preprocessing | `R/01_preprocess.R`; `data/processed/`; one-command rerun via `R/00_run_all.R` |
+| Deliverable: EDA summary | `data/processed/eda_summary.txt`; §5.1 |
+| Deliverable: ≥ 5 meaningful visualizations | **15** figures in `figures/` (300 dpi) |
+| Deliverable: relevant statistical model / analysis | §6 |
+| Deliverable: interpretation of results | §8 |
+| Deliverable: final R Markdown report | this document (`reports/social_media_engagement_report.Rmd` → HTML) |
+
 # References
 
 1. Kaggle. *Social Media Engagement Dataset.*
