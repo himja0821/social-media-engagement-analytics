@@ -1,0 +1,39 @@
+==== REPLICATION: UCI Facebook Metrics (Moro et al., 2016) ====
+# A tibble: 7 × 2
+  Metric                     Value                     
+  <chr>                      <chr>                     
+1 Posts                      500                       
+2 Post types                 Photo, Status, Link, Video
+3 Date coverage              Jan-Dec 2014              
+4 Total likes                88,795                    
+5 Total comments             3,741                     
+6 Total shares               13,524                    
+7 Median interactions / post 123.5                     
+
+---- Interactions by post type ----
+# A tibble: 4 × 4
+  Type   Posts Median_Interactions Median_Reach
+  <fct>  <int>               <dbl>        <dbl>
+1 Video      7               271          30624
+2 Status    45               186          11096
+3 Photo    426               122           4675
+4 Link      22                52.5         7422
+
+---- Spearman correlations ----
+             Reach Impressions EngagedUsers Comments Likes Shares Interactions
+Reach         1.00        0.98         0.78     0.53  0.65   0.50         0.65
+Impressions   0.98        1.00         0.77     0.55  0.65   0.51         0.66
+EngagedUsers  0.78        0.77         1.00     0.50  0.63   0.57         0.64
+Comments      0.53        0.55         0.50     1.00  0.66   0.57         0.69
+Likes         0.65        0.65         0.63     0.66  1.00   0.84         1.00
+Shares        0.50        0.51         0.57     0.57  0.84   1.00         0.87
+Interactions  0.65        0.66         0.64     0.69  1.00   0.87         1.00
+
+==== Replication regression ====
+# A tibble: 1 × 12
+  r.squared adj.r.squared sigma statistic  p.value    df logLik   AIC   BIC
+      <dbl>         <dbl> <dbl>     <dbl>    <dbl> <dbl>  <dbl> <dbl> <dbl>
+1     0.194         0.157 0.480      5.22 8.62e-13    22  -331.  710.  811.
+# ℹ 3 more variables: deviance <dbl>, df.residual <int>, nobs <int>
+
+Replication adjusted R-squared: 0.157

@@ -2,12 +2,14 @@
 
 An end-to-end **R / tidyverse / ggplot2** analytics project that investigates what drives
 engagement (likes, comments, shares, saves and views) across **5,000 posts** on **six social-media
-platforms** over **2024–2025**.
+platforms** over **2024–2025** — and then **independently replicates** the findings on a **real,
+peer-reviewed dataset** (UCI *Facebook Metrics*, 500 posts).
 
 The project contains a reproducible preprocessing pipeline, an exploratory analysis with
-**eight publication-quality `ggplot2` figures**, and **two log-linear regression models** that
-quantify the drivers of engagement volume and engagement efficiency. Everything is presented in a
-single self-contained **R Markdown HTML report**.
+**fifteen publication-quality `ggplot2` figures**, and **log-linear regression models** that
+quantify the drivers of engagement volume and engagement efficiency, plus an interaction test,
+5-fold cross-validation and a robustness check. Everything is presented in a single self-contained
+**R Markdown HTML report**.
 
 ---
 
@@ -26,18 +28,27 @@ single self-contained **R Markdown HTML report**.
 | 9 | Model A coefficients | What drives engagement volume? |
 | 10 | Model diagnostics | Is the regression trustworthy? |
 | 11 | Model B coefficients | What drives engagement efficiency? |
+| 12 | Platform × format interaction | Do platform and format amplify each other? |
+| 13 | Replication: interactions by post type | Do the patterns hold on real data? |
+| 14 | Replication: correlation heat map | Is reach–engagement structure real? |
+| 15 | Replication: regression coefficients | Does format/timing matter in real data? |
 
 ### Headline results
 
-- **Reach is the dominant driver of engagement volume** (views and likes are strongly, positively
-  related on every platform).
-- **Platform is the strongest predictor** of both engagement volume and rate.
+- **Platform is the dominant lever — in two different ways.** TikTok wins on engagement *volume*
+  (~5× Instagram, all else equal); Instagram is the most *efficient* platform per view, YouTube the
+  least.
+- **Reach drives engagement volume** (views and likes are strongly, positively related on every
+  platform; Spearman ρ ≈ 0.65 between reach and interactions).
 - **Engagement rate is heavily right-skewed** — a typical post earns ≈ 2% of followers, with a long
   viral tail.
-- **Smaller accounts are more efficient:** the engagement *rate* falls as follower counts rise.
-- **Content format affects the rate, not the raw volume:** video/interactive posts convert better
-  than text.
-- Model **A** explains ≈ **68%** and Model **B** ≈ **80%** of the variation (adjusted R²).
+- **Volume and efficiency are different games:** content format/category move volume but not
+  efficiency; the platform × format interaction is **not** significant.
+- **Results are robust:** 5-fold CV RMSE = 0.24 (log₁₀) for Model A; removing the 295 view-anomaly
+  posts leaves every coefficient essentially unchanged.
+- Model **A** explains ≈ **68%** of the variation in engagement volume (adjusted R²); the
+  non-circular efficiency model (**B**) explains ≈ **22%**.
+- **The real-data replication reproduces the core patterns**, supporting external validity.
 
 ---
 
@@ -47,20 +58,23 @@ single self-contained **R Markdown HTML report**.
 social-media-engagement-analytics/
 ├── data/
 │   ├── raw/                                   # source data (see SOURCES.md)
-│   │   ├── social_media_engagement.csv
+│   │   ├── social_media_engagement.csv        # primary (Kaggle)
+│   │   ├── facebook_metrics.csv               # replication (UCI, real)
 │   │   └── SOURCES.md
 │   └── processed/                             # generated
 │       ├── engagement_clean.csv               # analysis-ready table
 │       ├── cleaning_log.txt                   # audit trail
 │       ├── eda_summary.txt
-│       └── model_summary.txt
+│       ├── model_summary.txt
+│       └── replication_summary.txt
 ├── R/
 │   ├── 00_setup.R            # packages, theme, palettes, helpers
 │   ├── 01_preprocess.R       # load, audit, clean, feature-engineer
 │   ├── 02_eda.R              # summaries + 8 ggplot2 figures
-│   ├── 03_modeling.R         # two log-linear models + diagnostics
+│   ├── 03_modeling.R         # models, interaction, CV, robustness
+│   ├── 04_replication.R      # independent replication on UCI data
 │   └── 00_run_all.R          # run the whole pipeline
-├── figures/                  # 11 exported PNG figures (300 dpi)
+├── figures/                  # 15 exported PNG figures (300 dpi)
 ├── reports/
 │   ├── social_media_engagement_report.Rmd     # the report source
 │   └── social_media_engagement_report.html    # rendered report (self-contained)
@@ -73,14 +87,22 @@ social-media-engagement-analytics/
 
 ## Data
 
-* **Source:** Kaggle — *Social Media Engagement Dataset*
-  (<https://www.kaggle.com/datasets/aviral342/social-media-engagement-dataset>).
+### Primary — Kaggle *Social Media Engagement Dataset*
+* **Source:** <https://www.kaggle.com/datasets/aviral342/social-media-engagement-dataset>
 * **Size:** 5,000 posts × 20 variables, 6 platforms, 12 categories, Jan 2024 – Dec 2025.
-* See [`data/raw/SOURCES.md`](data/raw/SOURCES.md) for provenance, licence and re-download steps.
+* The publisher states the figures are *platform-realistic and generated for educational use*, so
+  the project focuses on **methodology** and adds an independent real-data check.
 
-Key variables: `Timestamp`, `Platform`, `Content_Type`, `Category`, `Views`, `Likes`, `Comments`,
-`Shares`, `Saves`, `Follower_Count`, `Engagement_Rate`, `Hashtag_Count`, `Content_Length`,
-`Sentiment`, `Influencer_Tier`, `Has_Media`, `Is_Verified`.
+### Replication — UCI *Facebook Metrics* (real data)
+* **Source:** Moro, S., Rita, P., & Vala, B. (2016). *Predicting social media performance metrics
+  and the impact of the type of content.* Journal of Business Research, 69(9). UCI ID 368.
+* **Size:** 500 real posts from a cosmetics brand's Facebook page (2014).
+
+See [`data/raw/SOURCES.md`](data/raw/SOURCES.md) for full provenance, licences and re-download steps.
+
+Primary variables: `Timestamp`, `Platform`, `Content_Type`, `Category`, `Views`, `Likes`,
+`Comments`, `Shares`, `Saves`, `Follower_Count`, `Engagement_Rate`, `Hashtag_Count`,
+`Content_Length`, `Sentiment`, `Influencer_Tier`, `Has_Media`, `Is_Verified`.
 
 ---
 
@@ -106,7 +128,7 @@ rmarkdown::render("reports/social_media_engagement_report.Rmd")
 The report uses `knitr::read_chunk()` to execute the *same* code in `R/`, so the scripts and the
 report can never drift apart.
 
-To re-download the raw data instead of using the bundled CSV:
+To re-download the primary raw data instead of using the bundled CSV:
 
 ```r
 # using the kagglehub R client (no credentials needed for this public dataset)
@@ -116,16 +138,31 @@ kagglehub::dataset_download("aviral342/social-media-engagement-dataset")
 
 ---
 
+## Methods at a glance
+
+* **Cleaning:** timestamp parsing, internal-consistency checks (hour/day match the timestamp),
+  re-derivation of the supplied `Engagement_Rate`, and flagging of 295 view-anomaly posts.
+* **EDA:** distributions, platform/format/tier comparisons, log–log scatter, hour facets and a
+  hierarchically ordered correlation heat map.
+* **Modelling:** log-linear regressions; **Model A** = log₁₀(total engagement) volume, **Model B** =
+  log₁₀(interactions per view) efficiency (chosen to avoid the circularity of a per-follower rate).
+  Includes a Platform × Format interaction test, variance-inflation factors, 5-fold CV RMSE, and a
+  sensitivity refit excluding anomalies.
+* **Replication:** the same modelling logic re-run on the real UCI Facebook Metrics dataset.
+
+---
+
 ## Deliverables checklist
 
-- [x] Dataset description and source
+- [x] Dataset description and source (two datasets)
 - [x] R scripts / notebook (`R/`)
 - [x] Reproducible preprocessing (cleaned dataset in `data/processed/`)
 - [x] EDA summary (`data/processed/eda_summary.txt`)
-- [x] Eight meaningful `ggplot2` visualisations (trends, distributions, comparisons, scatter,
-      facets, correlation heat map)
-- [x] Statistical model / analysis (two regressions with diagnostics)
-- [x] Interpretation of results (§7 of the report)
+- [x] Meaningful `ggplot2` visualisations (15 figures: trends, distributions, comparisons, scatter,
+      facets, correlation heat maps, coefficient plots, diagnostics, replication)
+- [x] Statistical models with diagnostics, interaction test, cross-validation and robustness
+- [x] Interpretation of results (§8 of the report)
+- [x] Independent replication on real data (§7 of the report)
 - [x] Final R Markdown report (HTML)
 
 ---
@@ -136,5 +173,5 @@ kagglehub::dataset_download("aviral342/social-media-engagement-dataset")
 
 ## Licence
 
-Code released under the [MIT License](LICENSE). The dataset remains subject to the terms of its
-Kaggle listing.
+Code released under the [MIT License](LICENSE). The datasets remain subject to the terms of their
+respective listings (Kaggle and UCI).

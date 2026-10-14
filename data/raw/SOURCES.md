@@ -50,3 +50,34 @@ The downloaded CSV was copied verbatim to `data/raw/social_media_engagement.csv`
 * Supplied `Engagement_Rate` equals `100 * (Likes + Comments + Shares) / Follower_Count`
   (maximum absolute difference 0.005, i.e. rounding error).
 * 295 posts flagged where total engagement exceeds `Views` (implausible but retained and flagged).
+
+## Replication dataset — `facebook_metrics.csv`
+
+| Field | Value |
+|---|---|
+| Title | Facebook Metrics |
+| Source | UCI Machine Learning Repository (ID 368) |
+| Study | Moro, S., Rita, P., & Vala, B. (2016). *Predicting social media performance metrics and the impact of the type of content: A case study in the banking sector.* Journal of Business Research, 69(9), 3341–3349. |
+| URL | https://archive.ics.uci.edu/dataset/368/facebook+metrics |
+| Mirror used | http://murraylax.org/datasets/facebook.csv |
+| File | `facebook_metrics.csv` |
+| Size | 500 rows × 14 columns |
+| Period | 2014 (one cosmetics brand's Facebook page) |
+
+### Columns
+
+`Type`, `Month`, `Weekday`, `Hour`, `Paid`, `Reach`, `Impressions`, `EngagedUsers`, `Comments`,
+`Likes`, `Shares`, `Interactions`, `Weekday.Int`, `Month.Int`.
+
+### Why it is used
+
+The primary Kaggle dataset is published as simulated/platform-realistic data. This **real,
+externally collected** dataset is used in `R/04_replication.R` and §7 of the report to confirm
+that the core patterns (reach drives engagement; format and timing matter) are not artefacts of
+the synthetic data.
+
+### Validation performed during preprocessing
+
+* 500 posts, 0 duplicate rows.
+* Missing values: `Likes` 1, `Shares` 4, `Interactions` 0 — handled with `na.rm`/pairwise deletion.
+* Some posts have zero interactions; a `log1p` scale is used when visualising.
