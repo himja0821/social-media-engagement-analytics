@@ -1,0 +1,13 @@
+Raw file: social_media_engagement.csv
+Raw dimensions: 5000 rows x 20 columns
+Missing values in raw file: 0
+Duplicate Post_IDs: 0
+Timestamps that failed to parse: 0
+Timestamp vs Hour_of_Day mismatches: 0
+Timestamp vs Day_of_Week mismatches: 0
+Engagement_Rate == 100*(Likes+Comments+Shares)/Follower_Count (max abs diff = 0.004999)
+Content labels harmonised into 4 formats: Video, Image, Interactive, Text/Article
+Posts flagged Views < total engagement (retained, flagged): 295
+Missing values after cleaning: 0
+Final dimensions: 5000 rows x 34 columns
+Date range: 2024-01-01 to 2025-12-31

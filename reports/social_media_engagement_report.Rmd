@@ -1,0 +1,347 @@
+---
+title: "Social Media Engagement Analytics"
+subtitle: "What drives likes, comments, shares and views across six platforms?"
+author: "Himaja Vuchuru"
+date: "`r format(Sys.Date(), '%d %B %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: true
+    theme: flatly
+    highlight: tango
+    code_folding: show
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+# --- Locate the project root and wire the scripts into this report -----------
+root <- local({
+  p <- normalizePath(getwd())
+  for (i in 1:6) {
+    if (all(dir.exists(file.path(p, c("data", "R"))))) return(p)
+    p <- normalizePath(file.path(p, ".."))
+  }
+  getwd()
+})
+knitr::opts_knit$set(root.dir = root)
+knitr::opts_chunk$set(
+  echo = TRUE, message = FALSE, warning = FALSE,
+  fig.width = 9, fig.height = 5.5, dpi = 150,
+  fig.align = "center", out.width = "100%"
+)
+source(file.path(root, "R", "00_setup.R"))
+knitr::read_chunk(file.path(root, "R", "01_preprocess.R"))
+knitr::read_chunk(file.path(root, "R", "02_eda.R"))
+knitr::read_chunk(file.path(root, "R", "03_modeling.R"))
+```
+
+# Executive summary
+
+This report analyses **5,000 social-media posts** across **six platforms** (Instagram, TikTok,
+Facebook, YouTube, Twitter, LinkedIn) published across **2024–2025**, and asks a simple
+business question: *what actually drives engagement?*
+
+Key findings:
+
+* **Reach drives engagement volume.** Likes, comments, shares and saves rise together with
+  views, so getting *seen* is the first-order lever (Spearman $\rho \approx 0.4$–$0.5$ on a log scale).
+* **Engagement rate is strongly right-skewed**: the typical post sits near **2%** of followers,
+  but a small number of viral posts reach into the hundreds or thousands of percent.
+* **Platform matters most.** A platform fixed-effect explains a large share of the variation in
+  both engagement volume and engagement rate.
+* **Smaller accounts are more efficient.** Nano and micro accounts convert followers into
+  interactions far more efficiently than macro accounts.
+* **Format affects the *rate*, not the *volume*.** Video-like posts earn higher engagement rates,
+  but their raw volume is comparable to other formats once platform and reach are controlled.
+* Engagement is **stable over time** and **weakly related to timing** — posting period and weekend
+  effects exist but are small.
+
+# 1. Introduction and objectives
+
+Social-media managers must decide *what* to post, *where*, and *when*. This project builds a
+reproducible R pipeline that (i) cleans post-level analytics, (ii) explores engagement patterns
+with `ggplot2`, and (iii) quantifies the drivers of engagement with regression.
+
+**Research questions**
+
+1. How does engagement vary by **content type**, **platform** and **posting period**?
+2. How are **views, likes, comments and shares** related to one another?
+3. Which account, content and timing features best predict an **engagement measure**, and how
+   much of the variation can we explain?
+
+# 2. Dataset description and source
+
+* **Dataset:** *Social Media Engagement Dataset*
+  (URL: <https://www.kaggle.com/datasets/aviral342/social-media-engagement-dataset>).
+* **Coverage:** 5,000 posts, 6 platforms, 12 content categories, Jan 2024 – Dec 2025.
+* **Granularity:** one row per post.
+* **Licence:** public Kaggle dataset, re-downloadable via the `kagglehub` R/Python client.
+* **Note on provenance:** the Kaggle publisher states the engagement figures are *platform-realistic
+  and generated for educational/research use*. The focus of this project is therefore the
+  **methodology and the reproducible pipeline**, and findings are interpreted as properties of
+  this dataset rather than as universal facts about live platforms.
+
+The raw file is stored at `data/raw/social_media_engagement.csv`.
+
+| Variable | Role | Description |
+|---|---|---|
+| `Timestamp` | time | Date and time the post was published |
+| `Platform` | factor | Instagram, TikTok, Facebook, YouTube, Twitter, LinkedIn |
+| `Content_Type` | factor | Platform-native format (Reel, Short, Tweet, Article, …) |
+| `Category` | factor | Content topic (Business, Fitness, Travel, …) |
+| `Views` | numeric | Times the post was displayed (impressions) |
+| `Likes` / `Comments` / `Shares` / `Saves` | numeric | Engagement actions |
+| `Follower_Count` | numeric | Account size at posting time |
+| `Engagement_Rate` | numeric | Supplied rate metric (validated in §4) |
+| `Hashtag_Count`, `Content_Length` | numeric | Caption characteristics |
+| `Sentiment`, `Influencer_Tier`, `Has_Media`, `Is_Verified` | factors | Account/content attributes |
+
+# 3. Methodology
+
+The analysis is organised as three scripts under `R/`, all sourced by this report:
+
+| Script | Purpose |
+|---|---|
+| `R/01_preprocess.R` | Load, audit and clean the data |
+| `R/02_eda.R` | Summary statistics and eight `ggplot2` visualisations |
+| `R/03_modeling.R` | Two log-linear regression models with diagnostics |
+
+Packages: `tidyverse` (`dplyr`, `tidyr`, `readr`, `stringr`, `forcats`), `lubridate`, `ggplot2`,
+`scales`, `broom`, `patchwork`.
+
+# 4. Data cleaning and preprocessing
+
+The raw file is already tidy (one row per post), so cleaning focuses on **type coercion,
+feature engineering and an integrity audit**.
+
+```{r load-raw}
+```
+
+Timestamps are parsed to a real datetime; the stored `Hour_of_Day` and `Day_of_Week` are then
+checked against it as an internal-consistency test.
+
+```{r clean-timestamps}
+```
+
+Several derived features make the data analysis-ready: a harmonised **content format**, calendar
+fields, a **posting period**, a weekend flag, and two engagement metrics.
+
+```{r derive-features}
+```
+
+```{r relevel-factors}
+```
+
+The supplied `Engagement_Rate` is not taken on trust: it is re-derived from the raw counts and
+compared. It equals `100 * (Likes + Comments + Shares) / Follower_Count`.
+
+```{r validate-rate}
+```
+
+Finally we log the audit trail and write the analysis-ready table. Note the 295 posts flagged
+where total engagement exceeds views — an artefact of the data-generation process; they are
+**retained but flagged** and their effect is examined in §7.
+
+```{r clean-summary}
+```
+
+```{r save-clean}
+```
+
+# 5. Exploratory data analysis
+
+We now reload the cleaned table (with factor levels restored) and summarise it.
+
+```{r load-clean}
+```
+
+## 5.1 Overview and summary statistics
+
+```{r eda-summary}
+```
+
+```{r eda-missing}
+```
+
+```{r eda-correlation}
+```
+
+The correlation matrix already answers research question 2: the engagement actions are
+**positively and moderately correlated** (log-scale Spearman $\rho$ between 0.23 and 0.50),
+with **views–shares** and **likes–saves** especially linked. Follower count and hashtag count
+are close to uncorrelated with the engagement actions, and **longer captions correlate weakly
+negatively** with engagement.
+
+## 5.2 Engagement over time
+
+```{r fig-trend, fig.width=10, fig.height=5.5}
+```
+
+*Figure 1. Monthly mean engagement rate with a LOESS trend. Engagement is remarkably stable
+across the two years, with no strong seasonality.*
+
+## 5.3 Distribution of engagement
+
+```{r fig-distribution, fig.width=9, fig.height=5}
+```
+
+*Figure 2. The engagement rate is strongly right-skewed — most posts cluster near 2%, with a long
+viral tail. This justifies the log transforms used throughout.*
+
+## 5.4 Comparison by content type and platform
+
+```{r fig-contenttype, fig.width=8, fig.height=5}
+```
+
+*Figure 3. Video posts have the highest median engagement rate, text/article posts the lowest.
+The y-axis is zoomed with `coord_cartesian()` so the boxes are readable.*
+
+```{r fig-platform, fig.width=8, fig.height=5}
+```
+
+*Figure 4. Mean engagement rate by platform. TikTok leads by a wide margin; LinkedIn trails. The
+large means (and wide error bars) reflect viral outliers — hence the median-based views below.*
+
+## 5.5 Relationships among views, likes and shares
+
+```{r fig-scatter, fig.width=8, fig.height=6}
+```
+
+*Figure 5. On log–log axes, likes increase almost linearly with views on every platform — reach is
+the dominant driver of engagement volume.*
+
+## 5.6 Timing, facets and correlation structure
+
+```{r fig-facet-time, fig.width=10, fig.height=6}
+```
+
+*Figure 6. Median engagement rate by hour of day, faceted by platform. The best posting hour
+differs by platform — there is no single "golden hour".*
+
+```{r fig-heatmap, fig.width=8, fig.height=7}
+```
+
+*Figure 7. Hierarchically ordered Spearman correlation heat map of the engagement metrics.*
+
+```{r fig-tiers, fig.width=8, fig.height=5}
+```
+
+*Figure 8. Engagement rate by influencer tier. Efficiency falls monotonically as accounts grow.*
+
+# 6. Statistical modelling
+
+We fit two **log-linear** (log–log / semi-log) models, because the outcome variables are heavily
+right-skewed:
+
+* **Model A — engagement volume:** $\log_{10}(\text{Total Engagement})$ (likes + comments + shares + saves).
+* **Model B — engagement efficiency:** $\log_{10}(\text{Engagement Rate})$.
+
+Predictors in both: $\log_{10}$(followers), platform, content format, category, posting period,
+weekend flag, sentiment, hashtag count, $\log_{10}$(content length) and verification status.
+Because the outcome is in $\log_{10}$, a coefficient of $\beta$ corresponds to a
+$(10^{\beta}-1)\times 100\%$ change.
+
+```{r model-data}
+```
+
+```{r model-vol}
+```
+
+```{r model-rate}
+```
+
+```{r model-output}
+```
+
+## 6.1 Coefficient plots
+
+```{r fig-model-coef, fig.width=9, fig.height=10}
+```
+
+*Figure 9. Model A coefficients with 95% confidence intervals. Platform dominates; content format
+and category are mostly insignificant for volume.*
+
+```{r fig-model-rate-coef, fig.width=9, fig.height=10}
+```
+
+*Figure 11. Model B coefficients. For the *rate*, content format becomes significant — video and
+interactive posts outperform text.*
+
+## 6.2 Diagnostics
+
+```{r fig-model-diagnostics, fig.width=11, fig.height=8}
+```
+
+*Figure 10. Model A diagnostics. Residuals are close to normal with only mild heteroscedasticity,
+so the linear model is appropriate. All variance-inflation factors are below 5 (max ≈ 4.0), so
+multicollinearity is not a concern.*
+
+# 7. Findings and interpretation
+
+**Model A (volume)** explains **`r sprintf('%.0f%%', glance_a$adj.r.squared * 100)`** of the
+variation (adjusted $R^2$) and **Model B (rate)** explains
+**`r sprintf('%.0f%%', glance_b$adj.r.squared * 100)`**. Together they support the following.
+
+1. **Platform is the single strongest lever.** Relative to Instagram, TikTok posts attract far
+   more engagement and LinkedIn far less, after controlling for every other feature. This is the
+   largest effect in both models.
+2. **Content format shapes efficiency, not just volume.** In the rate model, video and
+   interactive formats are significantly positive versus text — consistent with §5.4 — but their
+   volume effect is small once reach and platform are controlled.
+3. **Account size trades off against efficiency.** As follower count rises, the *rate* of
+   engagement per follower falls (Model B), even though raw volume grows. Nano/micro creators are
+   the most efficient.
+4. **Timing is a minor effect.** Evening/night posting and weekends shift engagement by only a few
+   percent; the effect is statistically detectable but practically small.
+5. **Caption length is mildly negative and hashtags ~neutral.** More text is not better, and adding
+   hashtags does not reliably lift engagement in this dataset.
+
+**Practical recommendations:** prioritise platform fit and short, video-first content; recognise
+that large accounts should expect a lower engagement *rate*; and treat posting-time and hashtag
+"hacks" as fine-tuning rather than strategy.
+
+# 8. Limitations
+
+* The dataset is published as platform-realistic/simulated data, so effect sizes are properties of
+  the dataset; the *methods* transfer directly to real analytics exports.
+* 295 posts contain the implausible pattern `Views < total engagement`. They are flagged and
+  retained; excluding them does not change the qualitative conclusions but would be worth a
+  sensitivity check with production data.
+* `Engagement_Rate`, `Views` and the action counts may be co-generated, which can inflate the
+  strength of within-dataset relationships.
+* Only two years of data are available, limiting seasonality analysis.
+
+# 9. Reproducibility
+
+```
+social-media-engagement-analytics/
+├── data/raw/social_media_engagement.csv      # source data
+├── data/processed/                           # cleaned CSV + logs
+├── R/00_setup.R 01_preprocess.R 02_eda.R 03_modeling.R 00_run_all.R
+├── figures/                                  # 11 exported PNG figures
+└── reports/social_media_engagement_report.Rmd
+```
+
+To reproduce everything from scratch:
+
+```r
+# from the project root
+source("R/00_run_all.R")                                 # scripts -> data + figures
+rmarkdown::render("reports/social_media_engagement_report.Rmd")  # -> HTML report
+```
+
+The report re-executes the same scripts via `knitr::read_chunk()`, so the scripts and the report
+can never drift apart.
+
+# References
+
+1. Kaggle. *Social Media Engagement Dataset.*
+   <https://www.kaggle.com/datasets/aviral342/social-media-engagement-dataset>
+2. Wickham, H. et al. (2019). *Welcome to the tidyverse.* Journal of Open Source Software, 4(43), 1686.
+3. Wickham, H. (2016). *ggplot2: Elegant Graphics for Data Analysis.* Springer.
+
+```{r session-info, echo=FALSE}
+sessionInfo()
+```

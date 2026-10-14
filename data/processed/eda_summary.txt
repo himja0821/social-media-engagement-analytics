@@ -1,0 +1,52 @@
+==== OVERVIEW ====
+# A tibble: 9 × 2
+  Metric             Value                   
+  <chr>              <chr>                   
+1 Posts analysed     5,000                   
+2 Platforms          6                       
+3 Content formats    4                       
+4 Content categories 12                      
+5 Date range         2024-01-01 to 2025-12-31
+6 Total likes        37,684,192              
+7 Total comments     1,699,494               
+8 Total shares       4,176,167               
+9 Total saves        3,765,753               
+
+==== SUMMARY STATISTICS ====
+# A tibble: 10 × 8
+   Variable             Mean   Median        SD    Min        Q1       Q3    Max
+   <chr>               <dbl>    <dbl>     <dbl>  <dbl>     <dbl>    <dbl>  <dbl>
+ 1 Comments            340.     212      400.     1        96      3.77e2 2.00e3
+ 2 Content_Length      755.     549      576.    15       280      1.23e3 2.00e3
+ 3 Engagement_Rate      12.0      2.3     71.5    0.05      1.03   6.24e0 3.51e3
+ 4 Follower_Count   249959.  248930.  144593.   543    124560.     3.75e5 5.00e5
+ 5 Hashtag_Count        14.8     15        8.67   0         7      2.2 e1 2.9 e1
+ 6 Likes              7537.    4074.   10169.    18      1708.     7.78e3 4.99e4
+ 7 Saves               753.     424      933.     5       200      8.05e2 4.99e3
+ 8 Shares              835.     428.    1014.     2       177      1.11e3 5.00e3
+ 9 Total_Engagement   9465.    5480.   11467.   203      2836      9.37e3 5.79e4
+10 Views            110968.   40664.  181287.   527     18507.     8.42e4 9.99e5
+
+==== ENGAGEMENT BY PLATFORM ====
+# A tibble: 6 × 5
+  Platform  Posts Median_Likes Median_Views Mean_ER
+  <fct>     <int>        <dbl>        <dbl>   <dbl>
+1 TikTok      758       25268.      242344.   41.8 
+2 YouTube     479       10190       510240    10.5 
+3 Instagram  1283        4991        23930     8.12
+4 Facebook    984        4124        41256.    7.17
+5 Twitter     994        2366.       49372.    4.76
+6 LinkedIn    502        1032        14278     1.75
+
+==== ENGAGEMENT BY CONTENT FORMAT ====
+# A tibble: 4 × 4
+  Content_Format Posts Mean_ER Median_ER
+  <fct>          <int>   <dbl>     <dbl>
+1 Interactive      891   26.2       5.36
+2 Video           1401   14.3       3.22
+3 Image           1221    6.69      2.11
+4 Text/Article    1487    5.51      1.39
+
+Overall mean engagement rate (by followers): 11.96%
+Overall median engagement rate (by followers): 2.30%
+Skewness of Total_Engagement: 2.33

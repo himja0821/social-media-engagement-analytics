@@ -1,0 +1,23 @@
+# RStudio
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+
+# knitr / rmarkdown intermediates
+*.knit.md
+*_cache/
+*_files/
+
+# stray plotting device output
+Rplots.pdf
+
+# OS cruft
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Python (kagglehub)
+__pycache__/
+*.pyc
+.venv/
