@@ -56,9 +56,11 @@ Key findings:
   and interactions — see the real-data replication in §7).
 * **Engagement rate is strongly right-skewed**: the typical post sits near **2%** of followers,
   but a small number of viral posts reach into the hundreds or thousands of percent.
-* **Content format influences volume, not efficiency.** Once platform is controlled, format and
-  category have little effect on how efficiently a view is converted; the platform × format
-  interaction is **not** statistically significant.
+* **Platform dominates; format and category add little once platform is held constant.** In the
+  primary data, the content-format and category coefficients are mostly non-significant for both
+  volume and efficiency, and the platform × format interaction is **not** statistically
+  significant — platform is the real driver. (Notably, post *type* **is** significant in the real
+  replication dataset — §7.)
 * **The results are robust.** Two independent checks — 5-fold cross-validation and re-fitting
   after removing 295 data-quality anomalies — leave every conclusion intact.
 * **Real data agrees.** On the independent UCI Facebook dataset, post type and posting month are
@@ -300,7 +302,7 @@ and category are mostly insignificant for volume.*
 ```{r fig-model-rate-coef, fig.width=9, fig.height=10}
 ```
 
-*Figure 11. Model B coefficients (efficiency = interactions per view). Here **platform alone** is
+*Figure 10. Model B coefficients (efficiency = interactions per view). Here **platform alone** is
 significant — Instagram converts views into engagement most efficiently, YouTube least.*
 
 ## 6.2 Does platform interact with format?
@@ -308,7 +310,7 @@ significant — Instagram converts views into engagement most efficiently, YouTu
 ```{r fig-model-interaction, fig.width=8, fig.height=5.5}
 ```
 
-*Figure 12. Median engagement for each platform × content-format cell. A nested F-test
+*Figure 11. Median engagement for each platform × content-format cell. A nested F-test
 (F = `r sprintf('%.2f', int_test[["F"]][2])`, p = `r sprintf('%.2f', int_test[["Pr(>F)"]][2])`)
 shows the interaction is **not** significant: platform and format act additively rather than
 amplifying one another, so the simpler additive Model A is preferred.*
@@ -330,7 +332,7 @@ conclusion depends on the anomalies.
 ```{r fig-model-diagnostics, fig.width=11, fig.height=8}
 ```
 
-*Figure 10. Model A diagnostics. Residuals are close to normal with only mild heteroscedasticity,
+*Figure 12. Model A diagnostics. Residuals are close to normal with only mild heteroscedasticity,
 so the linear model is appropriate. All variance-inflation factors are below 5 (max ≈ 4.0), so
 multicollinearity is not a concern.*
 
@@ -363,13 +365,15 @@ reach-drives-engagement structure of the primary dataset.*
 ```
 
 *Figure 15. Regression coefficients on the real dataset. Posting month (seasonality), post type
-and hour are all significant, confirming that **format and timing genuinely influence engagement**
-in real data, not just in the synthetic sample.*
+and hour all reach significance, confirming that **format and timing do influence real engagement**.*
 
-The replication regression explains comparable variation
-(adjusted $R^2 = `r sprintf('%.2f', fb_glance$adj.r.squared)`$ on 500 real posts), and the
-direction of every major effect matches the primary analysis. The findings therefore
-**generalise** beyond the primary dataset.
+On 500 real posts the replication model reaches adjusted
+$R^2 = `r sprintf('%.2f', fb_glance$adj.r.squared)`$, and the **core mechanism replicates**: in both
+datasets engagement rises with reach, and posting timing matters. There is one instructive
+difference — in the real data post *type* stays significant after controlling for timing, whereas
+in the primary (synthetic) data platform absorbs the format effect. The two datasets therefore agree
+on the *engine* of engagement (reach and platform/timing) while differing on the relative weight of
+format, which is exactly the kind of nuance a second, independent dataset is meant to surface.
 
 # 8. Findings and interpretation
 
@@ -382,14 +386,18 @@ variation (adjusted $R^2$); **Model B (efficiency)** explains
 2. **Volume and efficiency are different games.** TikTok wins on volume, but Instagram is the most
    *efficient* platform per view; YouTube converts views worst of all. A manager chasing reach and
    a manager chasing per-view efficiency should choose different platforms.
-3. **Content format and category mainly affect volume, not efficiency.** In Model B they are not
-   significant; in Model A they are small. The platform × format interaction is not significant —
-   effects stack additively.
+3. **Once platform is controlled, content format and category matter little.** In the primary data
+   their coefficients are mostly non-significant for both volume (Model A) and efficiency (Model B),
+   and the platform × format interaction is not significant — effects stack additively. That
+   platform *absorbs* the format differences seen in the raw EDA (§5.4) is itself the finding: on
+   this dataset, format is largely a proxy for platform. (In the real replication data, by
+   contrast, post type remains significant — see §7.)
 4. **Timing is a minor effect.** Evening/night posting and weekends shift engagement by only a few
    percent; statistically detectable, practically small. (In the real dataset, month and hour are
    significant, indicating seasonality is brand-specific.)
-5. **Caption length is mildly negative and hashtags ~neutral.** More text is not better, and adding
-   hashtags does not reliably lift engagement in the primary dataset.
+5. **Caption length and hashtag count are not significant predictors.** Their weak raw correlations
+   with engagement (§5.1) do not survive controlling for platform and format (Model A p ≈ 0.44 and
+   0.36 respectively); adding text or hashtags does not reliably lift engagement here.
 
 **Practical recommendations:** prioritise platform fit; choose the platform according to whether the
 goal is reach (TikTok) or efficiency (Instagram); favour video/status formats; and treat

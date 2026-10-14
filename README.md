@@ -42,8 +42,9 @@ quantify the drivers of engagement volume and engagement efficiency, plus an int
   platform; Spearman ρ ≈ 0.65 between reach and interactions).
 - **Engagement rate is heavily right-skewed** — a typical post earns ≈ 2% of followers, with a long
   viral tail.
-- **Volume and efficiency are different games:** content format/category move volume but not
-  efficiency; the platform × format interaction is **not** significant.
+- **Platform absorbs format:** once platform is controlled, content format/category are mostly
+  non-significant for both volume and efficiency, and the platform × format interaction is **not**
+  significant (in the real replication data, post type *is* significant — see §7).
 - **Results are robust:** 5-fold CV RMSE = 0.24 (log₁₀) for Model A; removing the 295 view-anomaly
   posts leaves every coefficient essentially unchanged.
 - Model **A** explains ≈ **68%** of the variation in engagement volume (adjusted R²); the

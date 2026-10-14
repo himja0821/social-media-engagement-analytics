@@ -197,7 +197,7 @@ fig_coef_b <- make_coef_plot(
   "Effect on log10(interactions per view)",
   "Platform and format shape how efficiently a view is converted into engagement."
 )
-save_plot(fig_coef_b, "fig11_modelB_efficiency_coefficients", width = 9, height = 10)
+save_plot(fig_coef_b, "fig10_modelB_efficiency_coefficients", width = 9, height = 10)
 print(fig_coef_b)
 
 ## ---- fig-model-interaction --------------------------------------------------
@@ -215,7 +215,7 @@ fig_int <- ggplot(inter_df, aes(Content_Format, Platform, fill = Median_Eng)) +
     x = NULL, y = NULL, fill = "Median\nengagement",
     caption = "A nested F-test shows the interaction is not significant (F = 0.68, p = 0.61): the two factors stack without amplifying each other."
   )
-save_plot(fig_int, "fig12_platform_format_interaction", width = 8, height = 5.5)
+save_plot(fig_int, "fig11_platform_format_interaction", width = 8, height = 5.5)
 print(fig_int)
 
 ## ---- fig-model-diagnostics --------------------------------------------------
@@ -250,7 +250,7 @@ fig_diag <- (d1 + d2) / (d3 + d4) +
     caption = "Model A: log10(total engagement) ~ platform, format, category, timing and account features.",
     theme = theme_social()
   )
-suppressMessages(save_plot(fig_diag, "fig10_model_diagnostics", width = 11, height = 8))
+suppressMessages(save_plot(fig_diag, "fig12_model_diagnostics", width = 11, height = 8))
 suppressMessages(print(fig_diag))
 
 cat("\n[03_modeling] Model outputs written to", DIR_PROC, "\n")
