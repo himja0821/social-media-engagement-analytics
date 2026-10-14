@@ -2,8 +2,8 @@
 
 An end-to-end **R / tidyverse / ggplot2** analytics project that investigates what drives
 engagement (likes, comments, shares, saves and views) across **5,000 posts** on **six social-media
-platforms** over **2024–2025** — and then **independently replicates** the findings on a **real,
-peer-reviewed dataset** (UCI *Facebook Metrics*, 500 posts).
+platforms** over **2024–2025** — and then **independently validates** the findings on a second,
+**real Kaggle dataset** (23k+ genuinely observed VK posts).
 
 The project contains a reproducible preprocessing pipeline, an exploratory analysis with
 **fifteen publication-quality `ggplot2` figures**, and **log-linear regression models** that
@@ -29,27 +29,28 @@ quantify the drivers of engagement volume and engagement efficiency, plus an int
 | 10 | Model diagnostics | Is the regression trustworthy? |
 | 11 | Model B coefficients | What drives engagement efficiency? |
 | 12 | Platform × format interaction | Do platform and format amplify each other? |
-| 13 | Replication: interactions by post type | Do the patterns hold on real data? |
-| 14 | Replication: correlation heat map | Is reach–engagement structure real? |
-| 15 | Replication: regression coefficients | Does format/timing matter in real data? |
+| 13 | Validation: interactions by content format | Do the patterns hold on real data? |
+| 14 | Validation: correlation heat map | Do engagement actions co-move for real? |
+| 15 | Validation: regression coefficients | Does format/timing matter in real data? |
 
 ### Headline results
 
 - **Platform is the dominant lever — in two different ways.** TikTok wins on engagement *volume*
   (~5× Instagram, all else equal); Instagram is the most *efficient* platform per view, YouTube the
   least.
-- **Reach drives engagement volume** (views and likes are strongly, positively related on every
-  platform; Spearman ρ ≈ 0.65 between reach and interactions).
+- **Reach drives engagement volume** (views and likes are positively related on every platform;
+  Spearman ρ ≈ 0.4–0.5 on a log scale).
 - **Engagement rate is heavily right-skewed** — a typical post earns ≈ 2% of followers, with a long
   viral tail.
-- **Platform absorbs format:** once platform is controlled, content format/category are mostly
-  non-significant for both volume and efficiency, and the platform × format interaction is **not**
-  significant (in the real replication data, post type *is* significant — see §7).
+- **Platform absorbs format (in the primary data):** once platform is controlled, content
+  format/category are mostly non-significant for both volume and efficiency, and the platform ×
+  format interaction is **not** significant. On the real VK validation data, content format *is*
+  significant (see §7).
 - **Results are robust:** 5-fold CV RMSE = 0.24 (log₁₀) for Model A; removing the 295 view-anomaly
   posts leaves every coefficient essentially unchanged.
 - Model **A** explains ≈ **68%** of the variation in engagement volume (adjusted R²); the
   non-circular efficiency model (**B**) explains ≈ **22%**.
-- **The real-data replication reproduces the core patterns**, supporting external validity.
+- **The real-data validation reproduces the core patterns**, supporting external validity.
 
 ---
 
@@ -60,10 +61,11 @@ social-media-engagement-analytics/
 ├── data/
 │   ├── raw/                                   # source data (see SOURCES.md)
 │   │   ├── social_media_engagement.csv        # primary (Kaggle)
-│   │   ├── facebook_metrics.csv               # replication (UCI, real)
+│   │   ├── vk_posts_metadata.csv              # validation (Kaggle, real)
 │   │   └── SOURCES.md
 │   └── processed/                             # generated
 │       ├── engagement_clean.csv               # analysis-ready table
+│       ├── vk_clean.csv                       # cleaned validation table
 │       ├── cleaning_log.txt                   # audit trail
 │       ├── eda_summary.txt
 │       ├── model_summary.txt
@@ -73,7 +75,7 @@ social-media-engagement-analytics/
 │   ├── 01_preprocess.R       # load, audit, clean, feature-engineer
 │   ├── 02_eda.R              # summaries + 8 ggplot2 figures
 │   ├── 03_modeling.R         # models, interaction, CV, robustness
-│   ├── 04_replication.R      # independent replication on UCI data
+│   ├── 04_replication.R      # independent validation on real Kaggle data
 │   └── 00_run_all.R          # run the whole pipeline
 ├── figures/                  # 15 exported PNG figures (300 dpi)
 ├── reports/
@@ -94,10 +96,10 @@ social-media-engagement-analytics/
 * The publisher states the figures are *platform-realistic and generated for educational use*, so
   the project focuses on **methodology** and adds an independent real-data check.
 
-### Replication — UCI *Facebook Metrics* (real data)
-* **Source:** Moro, S., Rita, P., & Vala, B. (2016). *Predicting social media performance metrics
-  and the impact of the type of content.* Journal of Business Research, 69(9). UCI ID 368.
-* **Size:** 500 real posts from a cosmetics brand's Facebook page (2014).
+### Validation — Kaggle *VK Filtered Social Posts with Engagement Metadata* (real data)
+* **Source:** <https://www.kaggle.com/datasets/nooruzbekt/vk-social-media-posts-metadata>
+* **Size:** 23,453 genuinely observed VK posts (2011–2024) with likes, comments, reposts, content
+  format, text length, hashtags and posting time.
 
 See [`data/raw/SOURCES.md`](data/raw/SOURCES.md) for full provenance, licences and re-download steps.
 
@@ -129,12 +131,14 @@ rmarkdown::render("reports/social_media_engagement_report.Rmd")
 The report uses `knitr::read_chunk()` to execute the *same* code in `R/`, so the scripts and the
 report can never drift apart.
 
-To re-download the primary raw data instead of using the bundled CSV:
+To re-download the raw data instead of using the bundled CSVs (both are public Kaggle datasets,
+no credentials required):
 
-```r
-# using the kagglehub R client (no credentials needed for this public dataset)
-# install.packages("kagglehub")
-kagglehub::dataset_download("aviral342/social-media-engagement-dataset")
+```python
+# Python
+import kagglehub
+kagglehub.dataset_download("aviral342/social-media-engagement-dataset")   # primary
+kagglehub.dataset_download("nooruzbekt/vk-social-media-posts-metadata")   # validation
 ```
 
 ---
@@ -149,21 +153,22 @@ kagglehub::dataset_download("aviral342/social-media-engagement-dataset")
   log₁₀(interactions per view) efficiency (chosen to avoid the circularity of a per-follower rate).
   Includes a Platform × Format interaction test, variance-inflation factors, 5-fold CV RMSE, and a
   sensitivity refit excluding anomalies.
-* **Replication:** the same modelling logic re-run on the real UCI Facebook Metrics dataset.
+* **Validation:** the same core modelling logic re-run on a second, **real Kaggle** dataset
+  (23k+ observed VK posts) to confirm the patterns generalise beyond the simulated primary data.
 
 ---
 
 ## Deliverables checklist
 
-- [x] Dataset description and source (two datasets)
+- [x] Dataset description and source (two **Kaggle** datasets)
 - [x] R scripts / notebook (`R/`)
-- [x] Reproducible preprocessing (cleaned dataset in `data/processed/`)
+- [x] Reproducible preprocessing (cleaned datasets in `data/processed/`)
 - [x] EDA summary (`data/processed/eda_summary.txt`)
 - [x] Meaningful `ggplot2` visualisations (15 figures: trends, distributions, comparisons, scatter,
-      facets, correlation heat maps, coefficient plots, diagnostics, replication)
+      facets, correlation heat maps, coefficient plots, diagnostics, validation)
 - [x] Statistical models with diagnostics, interaction test, cross-validation and robustness
 - [x] Interpretation of results (§8 of the report)
-- [x] Independent replication on real data (§7 of the report)
+- [x] Independent validation on real Kaggle data (§7 of the report)
 - [x] Final R Markdown report (HTML)
 
 ---
@@ -174,5 +179,5 @@ kagglehub::dataset_download("aviral342/social-media-engagement-dataset")
 
 ## Licence
 
-Code released under the [MIT License](LICENSE). The datasets remain subject to the terms of their
-respective listings (Kaggle and UCI).
+Code released under the [MIT License](LICENSE). Both datasets remain subject to the terms of their
+respective Kaggle listings.

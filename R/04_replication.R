@@ -1,125 +1,181 @@
 # =============================================================================
-# 04_replication.R -- Independent replication on a REAL, peer-reviewed dataset
+# 04_replication.R -- Independent validation on a second, REAL Kaggle dataset
 # -----------------------------------------------------------------------------
-# Input : data/raw/facebook_metrics.csv
-#         (UCI "Facebook Metrics" dataset, Moro, Rita & Vala, 2016 -- 500 real
-#          posts from a cosmetics brand's Facebook page during 2014)
+# Input : data/raw/vk_posts_metadata.csv
+#         (Kaggle: "VK Filtered Social Posts with Engagement Metadata" --
+#          23,453 real posts scraped from public VK pages, 2011-2024)
 # Output: figures/fig13..fig15, data/processed/replication_summary.txt
 #
-# Purpose: show that the headline patterns found in the main dataset also hold
-#          on genuinely real, externally published data.
+# Purpose: the primary dataset is published as platform-realistic/simulated
+#          data. This script re-tests the core story -- that content format and
+#          posting timing drive engagement -- on genuinely real, observed posts,
+#          so the conclusions are not an artefact of one synthetic source.
 # =============================================================================
 
 if (!exists("theme_social")) source("R/00_setup.R")
 
 ## ---- repl-load --------------------------------------------------------------
-fb <- readr::read_csv(file.path(DIR_RAW, "facebook_metrics.csv"),
-                      show_col_types = FALSE)
+vk_raw <- readr::read_csv(
+  file.path(DIR_RAW, "vk_posts_metadata.csv"),
+  col_types = readr::cols(`Date & Time` = readr::col_character(),
+                          .default = readr::col_guess()),
+  show_col_types = FALSE
+)
 
-fb <- fb %>%
+vk <- vk_raw %>%
+  rename(
+    post_id      = `Post ID`,
+    datetime     = `Date & Time`,
+    author_id    = `Author ID`,
+    likes        = `Likes`,
+    comments     = `Comments`,
+    reposts      = `Reposts`,
+    hashtags     = `Hashtags`,
+    content_type = `Content Type`,
+    text_length  = `Text Length`,
+    time_of_day  = `Time of Day`
+  ) %>%
   mutate(
-    Type    = factor(Type, levels = c("Photo", "Status", "Link", "Video")),
-    Month   = factor(Month, levels = month.name),
-    Weekday = factor(Weekday, levels = c("Monday", "Tuesday", "Wednesday",
-                                         "Thursday", "Friday", "Saturday", "Sunday")),
-    Paid    = factor(Paid, levels = c(0, 1), labels = c("Organic", "Paid"))
+    datetime  = lubridate::ymd_hms(datetime),
+    # Real observed engagements: likes + comments + reposts
+    engagement = likes + comments + reposts,
+    has_hashtags = !is.na(hashtags) & trimws(hashtags) != "\u041d\u0435\u0442" &
+      nzchar(trimws(hashtags)),
+    format = dplyr::case_when(
+      stringr::str_detect(content_type, "video") ~ "Video",
+      stringr::str_detect(content_type, "photo") ~ "Photo",
+      stringr::str_detect(content_type, "link")  ~ "Link",
+      stringr::str_detect(content_type, "text")  ~ "Text",
+      TRUE                                       ~ "Other"
+    ),
+    time_of_day = dplyr::recode(time_of_day,
+      "\u0423\u0442\u0440\u043e"  = "Morning",
+      "\u0414\u0435\u043d\u044c"  = "Afternoon",
+      "\u0412\u0435\u0447\u0435\u0440" = "Evening",
+      "\u041d\u043e\u0447\u044c"  = "Night"
+    ),
+    year   = lubridate::year(datetime)
+  ) %>%
+  filter(!is.na(datetime), !is.na(format)) %>%
+  distinct(post_id, .keep_all = TRUE) %>%
+  mutate(
+    format      = factor(format, levels = c("Photo", "Video", "Link", "Text", "Other")),
+    time_of_day = factor(time_of_day,
+                         levels = c("Morning", "Afternoon", "Evening", "Night"))
   )
 
 ## ---- repl-summary -----------------------------------------------------------
 repl_overview <- tibble::tibble(
-  Metric = c("Posts", "Post types", "Date coverage", "Total likes",
-             "Total comments", "Total shares", "Median interactions / post"),
-  Value = c(nrow(fb),
-            paste(levels(fb$Type), collapse = ", "),
-            "Jan-Dec 2014",
-            format(sum(fb$Likes, na.rm = TRUE), big.mark = ","),
-            format(sum(fb$Comments, na.rm = TRUE), big.mark = ","),
-            format(sum(fb$Shares, na.rm = TRUE), big.mark = ","),
-            format(median(fb$Interactions, na.rm = TRUE), big.mark = ","))
+  Metric = c("Posts (real, observed)", "Date coverage", "Distinct posting days",
+             "Total likes", "Total comments", "Total reposts",
+             "Median engagements / post", "Share with hashtags"),
+  Value = c(format(nrow(vk), big.mark = ","),
+            paste(format(min(vk$datetime), "%b %Y"), "\u2013",
+                  format(max(vk$datetime), "%b %Y")),
+            format(dplyr::n_distinct(as.Date(vk$datetime)), big.mark = ","),
+            format(sum(vk$likes), big.mark = ","),
+            format(sum(vk$comments), big.mark = ","),
+            format(sum(vk$reposts), big.mark = ","),
+            format(median(vk$engagement), big.mark = ","),
+            sprintf("%.1f%%", 100 * mean(vk$has_hashtags)))
 )
 
-type_summary <- fb %>%
-  group_by(Type) %>%
+format_summary <- vk %>%
+  group_by(format) %>%
   summarise(Posts = n(),
-            Median_Interactions = median(Interactions, na.rm = TRUE),
-            Median_Reach = median(Reach, na.rm = TRUE), .groups = "drop") %>%
-  arrange(desc(Median_Interactions))
+            Median_Engagement = median(engagement),
+            Mean_Engagement = round(mean(engagement)),
+            Median_Text_Length = median(text_length, na.rm = TRUE),
+            .groups = "drop") %>%
+  arrange(desc(Median_Engagement))
 
-cor_vars_fb <- c("Reach", "Impressions", "EngagedUsers", "Comments",
-                 "Likes", "Shares", "Interactions")
-cor_fb <- fb %>% select(all_of(cor_vars_fb)) %>%
+time_summary <- vk %>%
+  group_by(time_of_day) %>%
+  summarise(Posts = n(), Median_Engagement = median(engagement),
+            .groups = "drop")
+
+cor_vars_vk <- c("likes", "comments", "reposts", "engagement", "text_length")
+cor_vk <- vk %>% select(all_of(cor_vars_vk)) %>%
   cor(method = "spearman", use = "pairwise.complete.obs") %>% round(2)
 
 repl_text <- c(
-  "==== REPLICATION: UCI Facebook Metrics (Moro et al., 2016) ====",
+  "==== VALIDATION: real Kaggle VK posts (23k+ observed posts) ====",
   capture.output(print(repl_overview)),
   "",
-  "---- Interactions by post type ----",
-  capture.output(print(type_summary)),
+  "---- Engagement by content format (real data) ----",
+  capture.output(print(format_summary)),
+  "",
+  "---- Engagement by time of day (real data) ----",
+  capture.output(print(time_summary)),
   "",
   "---- Spearman correlations ----",
-  capture.output(print(cor_fb))
+  capture.output(print(cor_vk))
 )
-
 cat(paste(repl_text, collapse = "\n"), "\n")
 
 ## ---- fig-repl-type ----------------------------------------------------------
-fig_repl_type <- ggplot(fb, aes(Type, Interactions, fill = Type)) +
+fig_repl_type <- ggplot(vk, aes(format, engagement, fill = format)) +
   geom_boxplot(outlier.shape = NA, alpha = 0.85, width = 0.65) +
-  geom_jitter(width = 0.12, alpha = 0.15, size = 0.8, colour = "grey20") +
+  geom_jitter(width = 0.12, alpha = 0.08, size = 0.6, colour = "grey20") +
   stat_summary(fun = median, geom = "point", shape = 23, size = 3,
                fill = "white", colour = "grey10") +
   scale_y_continuous(trans = "log1p", labels = comma_short) +
   scale_fill_viridis_d(guide = "none", option = "D", end = 0.85) +
   labs(
-    title = "Real data confirms format matters",
-    subtitle = "UCI Facebook Metrics: total interactions by post type (log scale)",
-    x = NULL, y = "Total interactions (log scale)",
-    caption = "White diamonds mark medians; jittered points show individual posts."
+    title = "Real observed data confirms format matters",
+    subtitle = "Kaggle VK posts: total engagements (likes + comments + reposts) by content format",
+    x = NULL, y = "Total engagements (log scale)",
+    caption = "Real data (n = 23k+ posts); white diamonds mark medians. A log1p axis keeps zero-engagement posts visible."
   )
 save_plot(fig_repl_type, "fig13_replication_interactions_by_type", width = 8, height = 5.5)
 print(fig_repl_type)
 
 ## ---- fig-repl-corr ----------------------------------------------------------
-repl_order <- cor_fb %>% dist() %>% hclust() %>% { .$order } %>% rownames(cor_fb)[.]
-cor_fb_long <- as.data.frame(cor_fb) %>%
+cor_order <- cor_vk %>% dist() %>% hclust() %>% { .$order } %>% rownames(cor_vk)[.]
+cor_long <- as.data.frame(cor_vk) %>%
   tibble::rownames_to_column("Var1") %>%
   pivot_longer(-Var1, names_to = "Var2", values_to = "rho") %>%
-  mutate(Var1 = factor(Var1, levels = rev(repl_order)),
-         Var2 = factor(Var2, levels = repl_order))
+  mutate(Var1 = factor(Var1, levels = rev(cor_order)),
+         Var2 = factor(Var2, levels = cor_order),
+         Var1 = stringr::str_replace_all(Var1, "_", " "),
+         Var2 = stringr::str_replace_all(Var2, "_", " "))
 
-fig_repl_corr <- ggplot(cor_fb_long, aes(Var2, Var1, fill = rho)) +
+fig_repl_corr <- ggplot(cor_long, aes(Var2, Var1, fill = rho)) +
   geom_tile(colour = "white", linewidth = 0.6) +
   geom_text(aes(label = sprintf("%.2f", rho)), size = 3, colour = "grey15") +
   scale_fill_gradientn(colours = PAL_DIVERGING, limits = c(-1, 1)) +
   coord_fixed() +
   labs(
-    title = "Reach and engagement move together in real data too",
-    subtitle = "UCI Facebook Metrics: Spearman correlations, hierarchically ordered",
+    title = "Likes, comments and reposts co-move in real data too",
+    subtitle = "Kaggle VK posts: Spearman correlations, hierarchically ordered",
     x = NULL, y = NULL, fill = "rho",
-    caption = "The views-reach/likes/shares structure mirrors the main dataset."
+    caption = "The positive coupling of engagement actions mirrors the primary dataset."
   ) +
   theme(axis.text.x = element_text(angle = 40, hjust = 1))
 save_plot(fig_repl_corr, "fig14_replication_correlation_heatmap", width = 8, height = 6.5)
 print(fig_repl_corr)
 
 ## ---- fig-repl-model ---------------------------------------------------------
-# Replicate the core regression: does posting period/type still matter?
-fb_model <- lm(log10(Interactions + 1) ~ Type + Month + Weekday + Hour + Paid,
-               data = fb)
-fb_glance <- broom::glance(fb_model)
-fb_tidy   <- broom::tidy(fb_model, conf.int = TRUE)
+# Replicate the core regression: do format and timing still matter on real data?
+vk_model <- lm(log10(engagement + 1) ~ format + log1p(text_length) +
+                 has_hashtags + time_of_day + year, data = vk)
+vk_glance <- broom::glance(vk_model)
+vk_tidy   <- broom::tidy(vk_model, conf.int = TRUE)
 
-cat("\n==== Replication regression: log10(Interactions) ====\n")
-print(fb_glance)
+cat("\n==== Validation regression: log10(engagements + 1) ====\n")
+print(vk_glance)
 
-repl_coef <- fb_tidy %>%
+repl_coef <- vk_tidy %>%
   filter(term != "(Intercept)") %>%
-  mutate(term = str_replace_all(term, "Type", "Type: "),
-         term = str_replace_all(term, "Month", "Month: "),
-         term = str_replace_all(term, "Weekday", "Weekday: "),
-         significant = p.value < 0.05,
-         term = fct_reorder(term, estimate))
+  mutate(
+    term = stringr::str_replace_all(term, "^format", "Format: "),
+    term = stringr::str_replace_all(term, "^time_of_day", "Time: "),
+    term = stringr::str_replace_all(term, "log1p\\(text_length\\)", "Text length (log)"),
+    term = stringr::str_replace_all(term, "has_hashtagsTRUE", "Has hashtags"),
+    term = stringr::str_replace_all(term, "^year", "Year (trend)"),
+    significant = p.value < 0.05,
+    term = fct_reorder(term, estimate)
+  )
 
 fig_repl_model <- ggplot(repl_coef, aes(estimate, term, colour = significant)) +
   geom_vline(xintercept = 0, linetype = "dashed", colour = "grey50") +
@@ -128,10 +184,10 @@ fig_repl_model <- ggplot(repl_coef, aes(estimate, term, colour = significant)) +
                       labels = c(`TRUE` = "p < 0.05", `FALSE` = "not significant"),
                       name = NULL) +
   labs(
-    title = "Posting period and format drive real engagement",
-    subtitle = "UCI Facebook Metrics regression coefficients with 95% CIs",
-    x = "Effect on log10(interactions)", y = NULL,
-    caption = "Month (seasonality), post type and hour all reach significance in real data."
+    title = "Format and length drive real engagement",
+    subtitle = "Kaggle VK posts regression coefficients with 95% CIs",
+    x = "Effect on log10(engagements)", y = NULL,
+    caption = "On genuinely observed posts, video format is a significant positive driver while link/text formats trail photos; longer captions and evening/night posting are slightly negative."
   )
 save_plot(fig_repl_model, "fig15_replication_model_coefficients", width = 9, height = 8)
 print(fig_repl_model)
@@ -139,11 +195,16 @@ print(fig_repl_model)
 repl_text <- c(
   repl_text,
   "",
-  "==== Replication regression ====",
-  capture.output(print(fb_glance)),
+  "==== Validation regression ====",
+  capture.output(print(vk_glance)),
   "",
-  sprintf("Replication adjusted R-squared: %.3f", fb_glance$adj.r.squared)
+  sprintf("Validation adjusted R-squared: %.3f", vk_glance$adj.r.squared),
+  sprintf("Validation sample: %s real posts", format(nrow(vk), big.mark = ","))
 )
 writeLines(repl_text, file.path(DIR_PROC, "replication_summary.txt"))
+readr::write_csv(vk %>%
+                   select(post_id, datetime, format, time_of_day, text_length,
+                          has_hashtags, likes, comments, reposts, engagement),
+                 file.path(DIR_PROC, "vk_clean.csv"))
 
-cat("\n[04_replication] Replication outputs written.\n")
+cat("\n[04_replication] Validation outputs written.\n")

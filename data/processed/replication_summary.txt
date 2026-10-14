@@ -1,39 +1,49 @@
-==== REPLICATION: UCI Facebook Metrics (Moro et al., 2016) ====
-# A tibble: 7 × 2
-  Metric                     Value                     
-  <chr>                      <chr>                     
-1 Posts                      500                       
-2 Post types                 Photo, Status, Link, Video
-3 Date coverage              Jan-Dec 2014              
-4 Total likes                88,795                    
-5 Total comments             3,741                     
-6 Total shares               13,524                    
-7 Median interactions / post 123.5                     
+==== VALIDATION: real Kaggle VK posts (23k+ observed posts) ====
+# A tibble: 8 × 2
+  Metric                    Value              
+  <chr>                     <chr>              
+1 Posts (real, observed)    23,437             
+2 Date coverage             Nov 2011 – Dec 2024
+3 Distinct posting days     817                
+4 Total likes               113,314,524        
+5 Total comments            3,641,849          
+6 Total reposts             21,917,151         
+7 Median engagements / post 2,037              
+8 Share with hashtags       1.8%               
 
----- Interactions by post type ----
-# A tibble: 4 × 4
-  Type   Posts Median_Interactions Median_Reach
-  <fct>  <int>               <dbl>        <dbl>
-1 Video      7               271          30624
-2 Status    45               186          11096
-3 Photo    426               122           4675
-4 Link      22                52.5         7422
+---- Engagement by content format (real data) ----
+# A tibble: 5 × 5
+  format Posts Median_Engagement Mean_Engagement Median_Text_Length
+  <fct>  <int>             <dbl>           <dbl>              <dbl>
+1 Link      99              3457           10742                395
+2 Other     73              3222            7353                  0
+3 Photo  13294              2122            3835                 19
+4 Video   8532              2088            9731                 38
+5 Text    1439              1333            2272                690
+
+---- Engagement by time of day (real data) ----
+# A tibble: 4 × 3
+  time_of_day Posts Median_Engagement
+  <fct>       <int>             <dbl>
+1 Morning      8231             2025 
+2 Afternoon    8328             2238 
+3 Evening      4240             1828.
+4 Night        2638             1904.
 
 ---- Spearman correlations ----
-             Reach Impressions EngagedUsers Comments Likes Shares Interactions
-Reach         1.00        0.98         0.78     0.53  0.65   0.50         0.65
-Impressions   0.98        1.00         0.77     0.55  0.65   0.51         0.66
-EngagedUsers  0.78        0.77         1.00     0.50  0.63   0.57         0.64
-Comments      0.53        0.55         0.50     1.00  0.66   0.57         0.69
-Likes         0.65        0.65         0.63     0.66  1.00   0.84         1.00
-Shares        0.50        0.51         0.57     0.57  0.84   1.00         0.87
-Interactions  0.65        0.66         0.64     0.69  1.00   0.87         1.00
+            likes comments reposts engagement text_length
+likes        1.00     0.36    0.47       0.93       -0.11
+comments     0.36     1.00    0.26       0.43        0.19
+reposts      0.47     0.26    1.00       0.70       -0.20
+engagement   0.93     0.43    0.70       1.00       -0.10
+text_length -0.11     0.19   -0.20      -0.10        1.00
 
-==== Replication regression ====
+==== Validation regression ====
 # A tibble: 1 × 12
-  r.squared adj.r.squared sigma statistic  p.value    df logLik   AIC   BIC
-      <dbl>         <dbl> <dbl>     <dbl>    <dbl> <dbl>  <dbl> <dbl> <dbl>
-1     0.194         0.157 0.480      5.22 8.62e-13    22  -331.  710.  811.
+  r.squared adj.r.squared sigma statistic p.value    df  logLik    AIC    BIC
+      <dbl>         <dbl> <dbl>     <dbl>   <dbl> <dbl>   <dbl>  <dbl>  <dbl>
+1    0.0706        0.0703 0.432      178.       0    10 -13601. 27226. 27323.
 # ℹ 3 more variables: deviance <dbl>, df.residual <int>, nobs <int>
 
-Replication adjusted R-squared: 0.157
+Validation adjusted R-squared: 0.070
+Validation sample: 23,437 real posts
